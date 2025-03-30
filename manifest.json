@@ -1,22 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "My Local Extension",
+  "name": "Notion Time Tracker",
   "version": "1.0",
-  "description": "A local test Chrome extension",
+  "description": "Calculate total time from Notion calendar event blocks.",
+  "permissions": ["activeTab", "scripting"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icon.png"
     }
   },
-  "permissions": ["storage"],
-  "icons": {
-    "16": "icon.png"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://calendar.notion.so/*"],
-      "js": ["content.js"]
-    }
-  ]
+"content_scripts": [
+  {
+    "matches": ["*://calendar.notion.so/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }
+]
+
+
 }

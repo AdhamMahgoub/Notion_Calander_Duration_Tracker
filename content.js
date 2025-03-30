@@ -1,4 +1,5 @@
-console.log("Notion Time Tracker content script loaded ");
+// content.js
+console.log("Notion Time Tracker content script loaded");
 
 function parseTime(timeStr) {
   const match = timeStr.match(/(\d+):(\d+)(AM|PM)/);
