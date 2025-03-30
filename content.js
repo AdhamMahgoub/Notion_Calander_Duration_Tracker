@@ -2,6 +2,7 @@
 console.log("Notion Time Tracker content script loaded");
 
 let lastMouse = { x: 100, y: 100 };
+let isDragging = false;
 
 function parseTime(timeStr) {
   const match = timeStr.match(/(\d{1,2})(?::(\d{2}))?(AM|PM)/);
@@ -53,6 +54,17 @@ document.addEventListener("mousemove", (e) => {
     hoverBox.style.top = `${e.clientY + 12}px`;
     hoverBox.style.left = `${e.clientX + 12}px`;
   }
+  if (isDragging) {
+    extractTimeFromSidebar();
+  }
+});
+
+document.addEventListener("mousedown", () => {
+  isDragging = true;
+});
+
+document.addEventListener("mouseup", () => {
+  isDragging = false;
 });
 
 function hideHoverDuration() {
@@ -105,7 +117,7 @@ function extractTimeFromSidebar(event) {
   }
 
   const timeKey = allTimes.join(" → ");
-  if (timeKey === lastTimeKey) return;
+  if (timeKey === lastTimeKey && !event) return;
   lastTimeKey = timeKey;
 
   if (event) {
@@ -128,15 +140,11 @@ function extractTimeFromSidebar(event) {
   }
 }
 
-// Trigger on task click
-const clickedOnce = new Set();
+// Always check on click
 document.addEventListener("click", function (e) {
   const block = e.target.closest("[style*='background-color'], [class*='calendar']");
-  if (block && !clickedOnce.has(block)) {
-    clickedOnce.add(block);
-    setTimeout(() => extractTimeFromSidebar(e), 500);
-  } else {
-    setTimeout(() => extractTimeFromSidebar(e), 500);
+  if (block) {
+    setTimeout(() => extractTimeFromSidebar(e), 1500);
   }
 });
 
