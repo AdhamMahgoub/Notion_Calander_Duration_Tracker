@@ -144,7 +144,7 @@ function extractTimeFromSidebar(event) {
 document.addEventListener("click", function (e) {
   const block = e.target.closest("[style*='background-color'], [class*='calendar']");
   if (block) {
-    setTimeout(() => extractTimeFromSidebar(e), 1500);
+    setTimeout(() => extractTimeFromSidebar(e), 500);
   }
 });
 
