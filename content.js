@@ -27,7 +27,6 @@ function displayDuration(minutes, event) {
   const mins = minutes % 60;
   const durationText = `🕒 ${hrs}h ${mins}m`;
 
-  // Remove any existing popup
   const existing = document.querySelector(".duration-popout");
   if (existing) existing.remove();
 
@@ -52,32 +51,41 @@ function displayDuration(minutes, event) {
 
   document.body.appendChild(popout);
 
-  // Fade out after 3 seconds
   setTimeout(() => {
     popout.style.opacity = "0";
     setTimeout(() => popout.remove(), 300);
   }, 3000);
 }
 
-function extractAndCalculateFromElement(el, event) {
-  const txt = el.innerText;
-  console.log("Clicked block text:", txt);
+function extractTimeFromSidebar(event) {
+  console.log("📥 Trying to read sidebar...");
 
-  if (!txt.includes("→")) return;
+  const timeDivs = Array.from(document.querySelectorAll('div[aria-hidden="true"]'))
+    .map(el => el.textContent.trim())
+    .filter(txt => txt.match(/\d{1,2}:\d{2}(AM|PM)?/));
 
-  const [start, end] = txt.split("→").map(t => t.trim());
+  if (timeDivs.length < 2) {
+    console.log("❌ Not enough time entries found:", timeDivs);
+    return;
+  }
+
+  const [start, end] = timeDivs;
+  console.log(`⏱ Found time range: ${start} → ${end}`);
+
   const duration = calculateDuration(start, end);
 
   if (duration !== null) {
+    console.log(`🕒 Duration: ${Math.floor(duration / 60)}h ${duration % 60}m`);
     displayDuration(duration, event);
   } else {
-    console.log("Failed to parse duration");
+    console.log("❌ Failed to calculate duration from sidebar times");
   }
 }
 
 document.addEventListener("click", function (e) {
   const block = e.target.closest("[style*='background-color'], [class*='calendar']");
   if (block) {
-    extractAndCalculateFromElement(block, e);
+    console.log("✅ Task clicked. Waiting for sidebar to load...");
+    setTimeout(() => extractTimeFromSidebar(e), 1500);
   }
 });
