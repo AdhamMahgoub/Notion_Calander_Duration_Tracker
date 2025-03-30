@@ -96,6 +96,6 @@ document.addEventListener("click", function (e) {
   const block = e.target.closest("[style*='background-color'], [class*='calendar']");
   if (block) {
     console.log("✅ Task clicked. Waiting for sidebar to load...");
-    setTimeout(() => extractTimeFromSidebar(e), 1500);
+    setTimeout(() => extractTimeFromSidebar(e), 100);
   }
 });
