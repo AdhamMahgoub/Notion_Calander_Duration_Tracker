@@ -2,9 +2,9 @@
 console.log("Notion Time Tracker content script loaded");
 
 function parseTime(timeStr) {
-  const match = timeStr.match(/(\d+):(\d+)(AM|PM)/);
+  const match = timeStr.match(/(\d{1,2})(?::(\d{2}))?(AM|PM)/);
   if (!match) return null;
-  const [_, hours, minutes, meridiem] = match;
+  const [, hours, minutes = "00", meridiem] = match;
   let h = parseInt(hours);
   const m = parseInt(minutes);
   if (meridiem === "PM" && h !== 12) h += 12;
@@ -26,6 +26,8 @@ function displayDuration(minutes, event) {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
   const durationText = `🕒 ${hrs}h ${mins}m`;
+
+  console.log("📊 Displaying Duration:", durationText);
 
   const existing = document.querySelector(".duration-popout");
   if (existing) existing.remove();
@@ -60,16 +62,24 @@ function displayDuration(minutes, event) {
 function extractTimeFromSidebar(event) {
   console.log("📥 Trying to read sidebar...");
 
-  const timeDivs = Array.from(document.querySelectorAll('div[aria-hidden="true"]'))
-    .map(el => el.textContent.trim())
-    .filter(txt => txt.match(/\d{1,2}:\d{2}(AM|PM)?/));
+  const inputTimes = Array.from(document.querySelectorAll('input[type="text"][data-subdued="true"]'))
+    .map(el => el.value?.trim())
+    .filter(txt => /^\d{1,2}(:\d{2})?(AM|PM)$/.test(txt));
 
-  if (timeDivs.length < 2) {
-    console.log("❌ Not enough time entries found:", timeDivs);
+  const divTimes = Array.from(document.querySelectorAll('div[aria-hidden="true"]'))
+    .map(el => el.textContent.trim())
+    .filter(txt => /^\d{1,2}(:\d{2})?(AM|PM)$/.test(txt));
+
+  const allTimes = [...new Set([...inputTimes, ...divTimes])];
+
+  console.log("🔍 Time elements found:", allTimes);
+
+  if (allTimes.length < 2) {
+    console.log("❌ Not enough time entries found:", allTimes);
     return;
   }
 
-  const [start, end] = timeDivs;
+  const [start, end] = allTimes;
   console.log(`⏱ Found time range: ${start} → ${end}`);
 
   const duration = calculateDuration(start, end);
