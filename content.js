@@ -1,6 +1,8 @@
 // content.js
 console.log("Notion Time Tracker content script loaded");
 
+let lastMouse = { x: 100, y: 100 };
+
 function parseTime(timeStr) {
   const match = timeStr.match(/(\d{1,2})(?::(\d{2}))?(AM|PM)/);
   if (!match) return null;
@@ -22,46 +24,70 @@ function calculateDuration(startStr, endStr) {
     : (24 * 60 - startTime) + endTime;
 }
 
-function displayDuration(minutes, event) {
+function showHoverDuration(text) {
+  let hoverBox = document.querySelector(".duration-hover-box");
+  if (!hoverBox) {
+    hoverBox = document.createElement("div");
+    hoverBox.className = "duration-hover-box";
+    document.body.appendChild(hoverBox);
+    hoverBox.style.cssText = `
+      position: fixed;
+      background: #111;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 13px;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 10000;
+    `;
+  }
+  hoverBox.textContent = text;
+  hoverBox.style.top = `${lastMouse.y + 12}px`;
+  hoverBox.style.left = `${lastMouse.x + 12}px`;
+}
+
+document.addEventListener("mousemove", (e) => {
+  lastMouse = { x: e.clientX, y: e.clientY };
+  const hoverBox = document.querySelector(".duration-hover-box");
+  if (hoverBox) {
+    hoverBox.style.top = `${e.clientY + 12}px`;
+    hoverBox.style.left = `${e.clientX + 12}px`;
+  }
+});
+
+function hideHoverDuration() {
+  const hoverBox = document.querySelector(".duration-hover-box");
+  if (hoverBox) hoverBox.remove();
+}
+
+function showSidebarDuration(minutes) {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
   const durationText = `🕒 ${hrs}h ${mins}m`;
 
-  console.log("📊 Displaying Duration:", durationText);
+  console.log("📊 Showing Sidebar Duration:", durationText);
+  showHoverDuration(durationText);
 
-  const existing = document.querySelector(".duration-popout");
-  if (existing) existing.remove();
-
-  const popout = document.createElement("div");
-  popout.innerText = durationText;
-  popout.className = "duration-popout";
-  popout.style.cssText = `
-    position: fixed;
-    top: ${event.clientY + 10}px;
-    left: ${event.clientX + 10}px;
-    background: #222;
-    color: #fff;
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 14px;
-    z-index: 10000;
-    pointer-events: none;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-    opacity: 1;
-    transition: opacity 0.2s ease-in-out;
-  `;
-
-  document.body.appendChild(popout);
-
-  setTimeout(() => {
-    popout.style.opacity = "0";
-    setTimeout(() => popout.remove(), 300);
-  }, 3000);
+  let existing = document.querySelector(".duration-sidebar-label");
+  if (!existing) {
+    existing = document.createElement("div");
+    existing.className = "duration-sidebar-label";
+    const target = document.querySelector('[data-root-scroll-context]');
+    if (!target) return;
+    existing.style.cssText = `
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #0f0;
+    `;
+    target.appendChild(existing);
+  }
+  existing.textContent = durationText;
 }
 
-function extractTimeFromSidebar(event) {
-  console.log("📥 Trying to read sidebar...");
+let lastTimeKey = "";
 
+function extractTimeFromSidebar(event) {
   const inputTimes = Array.from(document.querySelectorAll('input[type="text"][data-subdued="true"]'))
     .map(el => el.value?.trim())
     .filter(txt => /^\d{1,2}(:\d{2})?(AM|PM)$/.test(txt));
@@ -72,11 +98,20 @@ function extractTimeFromSidebar(event) {
 
   const allTimes = [...new Set([...inputTimes, ...divTimes])];
 
-  console.log("🔍 Time elements found:", allTimes);
-
   if (allTimes.length < 2) {
     console.log("❌ Not enough time entries found:", allTimes);
+    hideHoverDuration();
     return;
+  }
+
+  const timeKey = allTimes.join(" → ");
+  if (timeKey === lastTimeKey) return;
+  lastTimeKey = timeKey;
+
+  if (event) {
+    console.log("🔍 Time elements found (on click):", allTimes);
+  } else {
+    console.log("🔁 Time elements found (auto-detected):", allTimes);
   }
 
   const [start, end] = allTimes;
@@ -86,16 +121,32 @@ function extractTimeFromSidebar(event) {
 
   if (duration !== null) {
     console.log(`🕒 Duration: ${Math.floor(duration / 60)}h ${duration % 60}m`);
-    displayDuration(duration, event);
+    showSidebarDuration(duration);
   } else {
     console.log("❌ Failed to calculate duration from sidebar times");
+    hideHoverDuration();
   }
 }
 
+// Trigger on task click
+const clickedOnce = new Set();
 document.addEventListener("click", function (e) {
   const block = e.target.closest("[style*='background-color'], [class*='calendar']");
-  if (block) {
-    console.log("✅ Task clicked. Waiting for sidebar to load...");
-    setTimeout(() => extractTimeFromSidebar(e), 100);
+  if (block && !clickedOnce.has(block)) {
+    clickedOnce.add(block);
+    setTimeout(() => extractTimeFromSidebar(e), 500);
+  } else {
+    setTimeout(() => extractTimeFromSidebar(e), 500);
   }
+});
+
+// Trigger on sidebar change (for drag or live edits)
+const observer = new MutationObserver(() => {
+  extractTimeFromSidebar();
+});
+
+observer.observe(document.body, {
+  childList: true,
+  subtree: true,
+  characterData: true
 });
